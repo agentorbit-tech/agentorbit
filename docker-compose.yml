@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:6f30057d31f5861b66f3545d4821f987aacf1dd920765f0acadea0c58ff975b1
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agentorbit}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-agentorbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # Top-level resource limits (Compose V2 standalone honors these).
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: "1.0"
+    deploy:                 # kept for Swarm parity
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: processing/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-agentorbit}:${POSTGRES_PASSWORD:-agentorbit}@postgres:5432/${POSTGRES_DB:-agentorbit}?sslmode=disable
+    entrypoint: ["/agentorbit-migrate"]
+    command: ["up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  processing:
+    build:
+      context: .
+      dockerfile: processing/Dockerfile
+    env_file: .env
+    environment:
+      # Override sslmode for Docker internal network (postgres container has no TLS)
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agentorbit}?sslmode=disable
+    ports:
+      - "127.0.0.1:${PROCESSING_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Top-level resource limits (Compose V2 standalone honors these).
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: "1.0"
+    mem_swappiness: 0
+    deploy:                 # kept for Swarm parity
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  proxy:
+    build:
+      context: .
+      dockerfile: proxy/Dockerfile
+    env_file: .env
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8080}:8080"
+    depends_on:
+      processing:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Top-level resource limits (Compose V2 standalone honors these).
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: "0.5"
+    mem_swappiness: 0
+    deploy:                 # kept for Swarm parity
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+volumes:
+  pgdata:

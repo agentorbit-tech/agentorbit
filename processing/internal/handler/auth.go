@@ -44,6 +44,17 @@ func NewAuthHandler(authService *service.AuthService, mailer email.Mailer, appBa
 	}
 }
 
+// authCookieSameSite picks the SameSite mode for the auth cookie.
+// Cloud (cookieDomain set + HTTPS) shares the cookie with sibling
+// subdomains like billing.agentorbit.tech; cross-site fetch POSTs
+// require SameSite=None+Secure. Self-host stays on Lax (host-only).
+func (h *AuthHandler) authCookieSameSite() http.SameSite {
+	if h.cookieDomain != "" && h.cookieSecure {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteLaxMode
+}
+
 // Routes returns a mountable chi.Router for /auth/ routes.
 func (h *AuthHandler) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -164,7 +175,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Domain:   h.cookieDomain,
 		HttpOnly: true,
 		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: h.authCookieSameSite(),
 		MaxAge:   int(h.jwtTTL.Seconds()),
 	})
 
@@ -301,7 +312,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, _ *http.Request) {
 		Domain:   h.cookieDomain,
 		HttpOnly: true,
 		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: h.authCookieSameSite(),
 		MaxAge:   -1,
 	})
 	w.WriteHeader(http.StatusNoContent)

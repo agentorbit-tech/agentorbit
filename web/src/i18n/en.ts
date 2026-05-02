@@ -130,6 +130,7 @@ export const en = {
   // Footer
   footer_copyright: '© 2026 AgentOrbit',
   footer_privacy: 'Privacy',
+  feedback_contact: 'Questions or feedback',
 
   // ===== APP TRANSLATIONS =====
 

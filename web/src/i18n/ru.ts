@@ -132,6 +132,7 @@ export const ru: Record<TranslationKey, string> = {
   // Footer
   footer_copyright: '© 2026 AgentOrbit',
   footer_privacy: 'Конфиденциальность',
+  feedback_contact: 'Вопросы и предложения',
 
   // ===== APP TRANSLATIONS =====
 

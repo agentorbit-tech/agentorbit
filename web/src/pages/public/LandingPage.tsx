@@ -466,15 +466,26 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="py-10 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <span className="text-sm font-semibold text-zinc-50">AgentOrbit</span>
-            <span className="text-xs text-zinc-500">{t.footer_copyright}</span>
+        <div className="max-w-6xl mx-auto flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <span className="text-sm font-semibold text-zinc-50">AgentOrbit</span>
+              <span className="text-xs text-zinc-500">{t.footer_copyright}</span>
+            </div>
+            <div className="flex items-center gap-6 text-xs text-zinc-500">
+              <a href="/privacy-policy" className="hover:text-zinc-400 transition-colors duration-150">{t.footer_privacy}</a>
+              <a href="/terms" className="hover:text-zinc-400 transition-colors duration-150">{t.footer_terms}</a>
+              <a href="/consent" className="hover:text-zinc-400 transition-colors duration-150">{t.footer_consent}</a>
+            </div>
           </div>
-          <div className="flex items-center gap-6 text-xs text-zinc-500">
-            <a href="/privacy-policy" className="hover:text-zinc-400 transition-colors duration-150">{t.footer_privacy}</a>
-            <a href="/terms" className="hover:text-zinc-400 transition-colors duration-150">{t.footer_terms}</a>
-            <a href="/consent" className="hover:text-zinc-400 transition-colors duration-150">{t.footer_consent}</a>
+          <div className="text-xs text-zinc-500 text-center sm:text-left">
+            {t.feedback_contact}:{' '}
+            <a
+              href="mailto:agentorbit.tech@gmail.com"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors duration-150"
+            >
+              agentorbit.tech@gmail.com
+            </a>
           </div>
         </div>
       </footer>

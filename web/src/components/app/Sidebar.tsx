@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   LogOut,
+  Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n'
@@ -126,6 +127,19 @@ function SidebarContent({ collapsed, onToggle, onNavClick }: { collapsed: boolea
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
+
+        {/* Feedback email */}
+        <a
+          href="mailto:agentorbit.tech@gmail.com"
+          title={collapsed ? `${t.feedback_contact}: agentorbit.tech@gmail.com` : t.feedback_contact}
+          className={cn(
+            'flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-300 transition-colors duration-150 px-3 py-1.5',
+            collapsed && 'justify-center px-0'
+          )}
+        >
+          <Mail size={14} />
+          {!collapsed && <span className="truncate">agentorbit.tech@gmail.com</span>}
+        </a>
 
         {/* WS status */}
         <div

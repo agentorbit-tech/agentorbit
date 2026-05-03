@@ -432,6 +432,136 @@ func (s *AuthService) registerFirstUser(ctx context.Context, emailAddr, name, pa
 	}, nil
 }
 
+// RegisterWithInviteResult is returned by AuthService.RegisterWithInvite.
+type RegisterWithInviteResult struct {
+	UserID         uuid.UUID
+	Email          string
+	OrganizationID uuid.UUID
+	Token          string
+	ExpiresAt      time.Time
+}
+
+// RegisterWithInvite creates a new account from a valid invite token in a
+// single transaction: user (auto-verified — possession of the invite link
+// proves inbox ownership), terms acceptance, organization membership, and
+// invite acceptance. On success a JWT is issued so the caller can land
+// straight on the dashboard without a separate login round-trip.
+//
+// The invite's email is the source of truth — the caller does not supply
+// one. If a user already exists for that email, the request is rejected
+// with email_exists; the user should sign in and let the regular
+// /auth/accept-invite flow add them to the organization.
+func (s *AuthService) RegisterWithInvite(ctx context.Context, token, name, password string, acceptedTerms, acceptedPrivacy bool) (*RegisterWithInviteResult, error) {
+	if !acceptedTerms {
+		return nil, &ServiceError{Code: "terms_not_accepted", Message: "You must accept the Terms of Service", Status: http.StatusUnprocessableEntity}
+	}
+	if !acceptedPrivacy {
+		return nil, &ServiceError{Code: "privacy_not_accepted", Message: "You must accept the Privacy Policy", Status: http.StatusUnprocessableEntity}
+	}
+	if strings.TrimSpace(name) == "" {
+		return nil, &ServiceError{Code: "invalid_name", Message: "Name is required", Status: http.StatusUnprocessableEntity}
+	}
+	if len(password) < 8 {
+		return nil, &ServiceError{Code: "password_too_short", Message: "Password must be at least 8 characters", Status: http.StatusUnprocessableEntity}
+	}
+	if len(password) > 128 {
+		return nil, &ServiceError{Code: "password_too_long", Message: "Password must be at most 128 characters", Status: http.StatusUnprocessableEntity}
+	}
+	if !hasPasswordComplexity(password) {
+		return nil, &ServiceError{Code: "password_too_weak", Message: "Password must include uppercase, lowercase, and a digit", Status: http.StatusUnprocessableEntity}
+	}
+
+	tokenHash, err := crypto.HashToken(token)
+	if err != nil {
+		return nil, &ServiceError{Code: "invalid_token", Message: "Invalid invite token", Status: http.StatusBadRequest}
+	}
+
+	if err := s.bcryptAcquire(ctx); err != nil {
+		return nil, err
+	}
+	pwHash, err := crypto.HashPassword(password)
+	s.bcryptRelease()
+	if err != nil {
+		return nil, fmt.Errorf("register-with-invite: hash password: %w", err)
+	}
+
+	var user db.User
+	var orgID uuid.UUID
+	err = txutil.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+
+		invite, err := q.GetInviteByTokenHash(ctx, tokenHash)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return &ServiceError{Code: "invalid_token", Message: "Invite token not found or expired", Status: http.StatusBadRequest}
+			}
+			return fmt.Errorf("register-with-invite: get invite: %w", err)
+		}
+		if invite.Email == nil || strings.TrimSpace(*invite.Email) == "" {
+			return &ServiceError{Code: "invalid_token", Message: "Invite is missing a target email", Status: http.StatusBadRequest}
+		}
+		emailAddr := strings.ToLower(strings.TrimSpace(*invite.Email))
+
+		user, err = q.CreateUser(ctx, db.CreateUserParams{
+			Email:        emailAddr,
+			Name:         name,
+			PasswordHash: pwHash,
+		})
+		if err != nil {
+			if isDuplicateError(err) {
+				return &ServiceError{Code: "email_exists", Message: "An account with this email already exists. Please sign in to accept the invite.", Status: http.StatusConflict}
+			}
+			return fmt.Errorf("register-with-invite: create user: %w", err)
+		}
+		if err := q.SetUserEmailVerified(ctx, user.ID); err != nil {
+			return fmt.Errorf("register-with-invite: auto-verify user: %w", err)
+		}
+		if err := q.SetUserTermsAccepted(ctx, db.SetUserTermsAcceptedParams{
+			ID:            user.ID,
+			PolicyVersion: 1,
+		}); err != nil {
+			return fmt.Errorf("register-with-invite: record terms acceptance: %w", err)
+		}
+		if _, err := q.CreateMembership(ctx, db.CreateMembershipParams{
+			OrganizationID: invite.OrganizationID,
+			UserID:         user.ID,
+			Role:           invite.Role,
+		}); err != nil {
+			if isDuplicateError(err) {
+				return &ServiceError{Code: "already_member", Message: "You are already a member of this organization", Status: http.StatusConflict}
+			}
+			return fmt.Errorf("register-with-invite: create membership: %w", err)
+		}
+		if err := q.AcceptInvite(ctx, invite.ID); err != nil {
+			return fmt.Errorf("register-with-invite: mark invite accepted: %w", err)
+		}
+		orgID = invite.OrganizationID
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	expiresAt := time.Now().Add(s.jwtTTL)
+	claims := jwt.MapClaims{
+		"sub": user.ID.String(),
+		"exp": expiresAt.Unix(),
+		"iat": time.Now().Unix(),
+	}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return nil, fmt.Errorf("register-with-invite: sign jwt: %w", err)
+	}
+
+	return &RegisterWithInviteResult{
+		UserID:         user.ID,
+		Email:          user.Email,
+		OrganizationID: orgID,
+		Token:          signed,
+		ExpiresAt:      expiresAt,
+	}, nil
+}
+
 // ResendVerification generates a fresh verification token for an unverified
 // user and sends a new verification email. No-ops (silently) if the user is
 // unknown, already verified, or email delivery fails — callers must return

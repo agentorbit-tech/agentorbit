@@ -18,6 +18,7 @@ import (
 // AuthHandler handles HTTP requests for /auth/* routes.
 type AuthHandler struct {
 	authService      *service.AuthService
+	inviteService    *service.InviteService
 	mailer           email.Mailer
 	cookieSecure     bool
 	cookieDomain     string
@@ -32,9 +33,10 @@ type AuthHandler struct {
 // Empty (self-host) means host-only — the cookie travels only to the
 // host that set it. Set to ".agentorbit.tech" in cloud so the cookie
 // is shared with sibling subdomains (e.g. billing.agentorbit.tech).
-func NewAuthHandler(authService *service.AuthService, mailer email.Mailer, appBaseURL string, cookieDomain string, jwtTTL time.Duration, emailRL *middleware.EmailRateLimiter, queries *db.Queries) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, inviteService *service.InviteService, mailer email.Mailer, appBaseURL string, cookieDomain string, jwtTTL time.Duration, emailRL *middleware.EmailRateLimiter, queries *db.Queries) *AuthHandler {
 	return &AuthHandler{
 		authService:      authService,
+		inviteService:    inviteService,
 		mailer:           mailer,
 		cookieSecure:     strings.HasPrefix(appBaseURL, "https://"),
 		cookieDomain:     cookieDomain,
@@ -59,7 +61,9 @@ func (h *AuthHandler) authCookieSameSite() http.SameSite {
 func (h *AuthHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/setup-status", h.SetupStatus)
+	r.Get("/invite-preview", h.InvitePreview)
 	r.Post("/register", h.Register)
+	r.Post("/register-with-invite", h.RegisterWithInvite)
 	r.Post("/login", h.Login)
 	r.Post("/verify-email", h.VerifyEmail)
 	r.Post("/request-password-reset", h.RequestPasswordReset)
@@ -143,6 +147,87 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"verification_url": result.VerificationURL,
 		})
 	}
+}
+
+// InvitePreview handles GET /auth/invite-preview?token=<token>.
+// Returns the invitee email + organization name so the public registration
+// form can pre-fill a read-only email field. Same error semantics as
+// AcceptInvite — invalid_token covers unknown / expired / accepted alike.
+func (h *AuthHandler) InvitePreview(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		WriteError(w, http.StatusBadRequest, "missing_token", "token is required")
+		return
+	}
+	preview, err := h.inviteService.PreviewInvite(r.Context(), token)
+	if err != nil {
+		var svcErr *service.ServiceError
+		if errors.As(err, &svcErr) {
+			WriteError(w, svcErr.Status, svcErr.Code, svcErr.Message)
+			return
+		}
+		slog.Error("invite preview failed", "error", err)
+		WriteError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
+		return
+	}
+	WriteJSON(w, http.StatusOK, preview)
+}
+
+// RegisterWithInvite handles POST /auth/register-with-invite.
+// Creates an account from a valid invite, auto-verifies the email (the
+// invite link itself proves inbox ownership), joins the org, and issues
+// a session cookie so the caller lands on the dashboard immediately.
+func (h *AuthHandler) RegisterWithInvite(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token           string `json:"token"`
+		Name            string `json:"name"`
+		Password        string `json:"password"`
+		AcceptedTerms   *bool  `json:"accepted_terms"`
+		AcceptedPrivacy *bool  `json:"accepted_privacy"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
+		return
+	}
+	if req.Token == "" {
+		WriteError(w, http.StatusBadRequest, "missing_token", "token is required")
+		return
+	}
+
+	result, err := h.authService.RegisterWithInvite(
+		r.Context(),
+		req.Token,
+		req.Name,
+		req.Password,
+		req.AcceptedTerms != nil && *req.AcceptedTerms,
+		req.AcceptedPrivacy != nil && *req.AcceptedPrivacy,
+	)
+	if err != nil {
+		var svcErr *service.ServiceError
+		if errors.As(err, &svcErr) {
+			WriteError(w, svcErr.Status, svcErr.Code, svcErr.Message)
+			return
+		}
+		slog.Error("register-with-invite failed", "error", err)
+		WriteError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "agentorbit_token",
+		Value:    result.Token,
+		Path:     "/",
+		Domain:   h.cookieDomain,
+		HttpOnly: true,
+		Secure:   h.cookieSecure,
+		SameSite: h.authCookieSameSite(),
+		MaxAge:   int(h.jwtTTL.Seconds()),
+	})
+
+	WriteJSON(w, http.StatusCreated, map[string]interface{}{
+		"organization_id": result.OrganizationID,
+		"expires_at":      result.ExpiresAt,
+	})
 }
 
 // Login handles POST /auth/login.

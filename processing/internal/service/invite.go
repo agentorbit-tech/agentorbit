@@ -28,6 +28,15 @@ type AcceptInviteResult struct {
 	OrganizationID uuid.UUID `json:"organization_id"`
 }
 
+// InvitePreviewResult is returned by InviteService.PreviewInvite.
+// It surfaces just enough to show the user what they're accepting before
+// they submit the registration form — never the inviter's name or any
+// other detail that could leak via a brute-forced token.
+type InvitePreviewResult struct {
+	Email   string `json:"email"`
+	OrgName string `json:"organization_name"`
+}
+
 // InviteService handles invite creation, acceptance, listing, and revocation.
 type InviteService struct {
 	queries *db.Queries
@@ -210,6 +219,33 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token string, userID u
 	}
 
 	return &AcceptInviteResult{OrganizationID: invite.OrganizationID}, nil
+}
+
+// PreviewInvite resolves a token to the invitee email + organization name so a
+// public registration form can show what the user is about to accept. Returns
+// invalid_token for any unknown / expired / already-accepted token, which is
+// the same error AcceptInvite uses — no information leak between the two.
+func (s *InviteService) PreviewInvite(ctx context.Context, token string) (*InvitePreviewResult, error) {
+	hash, err := crypto.HashToken(token)
+	if err != nil {
+		return nil, &ServiceError{Code: "invalid_token", Status: 400, Message: "Invalid invite token"}
+	}
+	invite, err := s.queries.GetInviteByTokenHash(ctx, hash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ServiceError{Code: "invalid_token", Status: 400, Message: "Invite token not found or expired"}
+		}
+		return nil, fmt.Errorf("preview invite: get invite: %w", err)
+	}
+	org, err := s.queries.GetOrganizationByID(ctx, invite.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("preview invite: get org: %w", err)
+	}
+	emailAddr := ""
+	if invite.Email != nil {
+		emailAddr = *invite.Email
+	}
+	return &InvitePreviewResult{Email: emailAddr, OrgName: org.Name}, nil
 }
 
 // ListPendingInvites returns all pending (unaccepted, non-expired) invites for an org.

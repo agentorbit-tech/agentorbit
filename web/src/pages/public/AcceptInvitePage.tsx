@@ -37,6 +37,17 @@ export function takePendingInvite(): string | null {
   return t
 }
 
+// Read the pending invite token without consuming it. Used by the register
+// page to render in invite-mode while leaving the token available for the
+// regular accept-flow if the user navigates away mid-registration.
+export function peekPendingInvite(): string | null {
+  return sessionStorage.getItem(PENDING_INVITE_KEY)
+}
+
+export function clearPendingInvite() {
+  sessionStorage.removeItem(PENDING_INVITE_KEY)
+}
+
 interface AcceptResponse {
   accepted: boolean
   organization_id: string

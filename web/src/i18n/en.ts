@@ -459,6 +459,10 @@ export const en = {
   auth_register_sent_to: 'We sent a verification link to',
   auth_register_copy_link: 'Copy this verification link:',
   auth_register_back_login: 'Back to login',
+  auth_register_invite_title: 'Join the team',
+  auth_register_invite_subtitle: 'Create your account to join {org}.',
+  auth_register_invite_btn: 'Create account & join',
+  auth_register_invite_email_exists: 'An account with this email already exists. Sign in to accept the invite.',
 
   // Auth - Validation
   auth_field_required: 'Required.',

@@ -461,6 +461,10 @@ export const ru: Record<TranslationKey, string> = {
   auth_register_sent_to: 'Мы отправили ссылку для подтверждения на',
   auth_register_copy_link: 'Скопируйте ссылку для подтверждения:',
   auth_register_back_login: 'Вернуться ко входу',
+  auth_register_invite_title: 'Присоединиться к команде',
+  auth_register_invite_subtitle: 'Создайте аккаунт, чтобы присоединиться к {org}.',
+  auth_register_invite_btn: 'Создать аккаунт и присоединиться',
+  auth_register_invite_email_exists: 'Аккаунт с таким email уже существует. Войдите, чтобы принять приглашение.',
 
   // Auth - Validation
   auth_field_required: 'Обязательное поле.',

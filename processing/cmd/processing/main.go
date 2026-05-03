@@ -166,7 +166,7 @@ func main() {
 
 	// Handlers
 	emailRateLimiter := middleware.NewEmailRateLimiter(ctx, 3, 1*time.Hour)
-	authHandler := handler.NewAuthHandler(authService, mailer, cfg.AppBaseURL, cfg.CookieDomain, cfg.JWTTTLDuration(), emailRateLimiter, queries)
+	authHandler := handler.NewAuthHandler(authService, inviteService, mailer, cfg.AppBaseURL, cfg.CookieDomain, cfg.JWTTTLDuration(), emailRateLimiter, queries)
 	orgHandler := handler.NewOrgHandler(orgService)
 	inviteHandler := handler.NewInviteHandler(inviteService, queries, mailer)
 	apiKeyHandler := handler.NewAPIKeyHandler(apiKeyService, middleware.RequireActiveOrg(), middleware.RequireRole)

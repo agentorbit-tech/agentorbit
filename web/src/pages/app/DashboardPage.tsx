@@ -21,7 +21,7 @@ export function DashboardPage() {
 
   useSessionsSocket(activeOrgID)
 
-  const statsQuery = useStats(activeOrgID, from, to)
+  const statsQuery = useStats(activeOrgID, from, to, { pollWhileEmpty: true })
   const dailyQuery = useDailyStats(activeOrgID, dateRange)
   const agentQuery = useAgentStats(activeOrgID, from, to)
   const finishQuery = useFinishReasons(activeOrgID, from, to)

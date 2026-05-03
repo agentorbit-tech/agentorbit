@@ -314,6 +314,9 @@ export const ru: Record<TranslationKey, string> = {
   keys_raw_title: 'Ваш новый API ключ',
   keys_raw_body: 'Скопируйте ключ сейчас — он больше не будет показан. Автоскрытие через {seconds}с.',
   keys_raw_done: 'Готово',
+  keys_raw_base_url_label: 'Укажите этот base URL у вашего агента:',
+  keys_raw_open_dashboard: 'Открыть дашборд',
+  keys_raw_copy_first: 'Сначала скопируйте ключ',
   keys_deactivate_title: 'Деактивировать API ключ',
   keys_deactivate_body: 'Ключ перестанет работать немедленно и не может быть восстановлен.',
   keys_deactivating: 'Деактивация...',
@@ -501,6 +504,20 @@ export const ru: Record<TranslationKey, string> = {
   auth_resend_verification_btn: 'Отправить письмо ещё раз',
   auth_resend_verification_sending: 'Отправка…',
   auth_resend_verification_sent: 'Письмо отправлено. Проверьте почту.',
+
+  // Auth - Accept invite
+  auth_invite_title: 'Принять приглашение',
+  auth_invite_token_invalid: 'Недействительный или отсутствующий токен приглашения.',
+  auth_invite_signin_required: 'Войдите или создайте аккаунт, чтобы принять приглашение.',
+  auth_invite_signin_btn: 'Войти',
+  auth_invite_register_btn: 'Создать аккаунт',
+  auth_invite_accepting: 'Принимаем приглашение…',
+  auth_invite_success: 'Приглашение принято. Перенаправляем…',
+  auth_invite_email_mismatch: 'Приглашение отправлено на другой email. Выйдите и войдите под тем, на который пришло приглашение.',
+  auth_invite_already_member: 'Вы уже состоите в этой организации.',
+  auth_invite_expired: 'Приглашение недействительно или его срок истёк.',
+  auth_invite_logout_btn: 'Выйти',
+  auth_invite_go_dashboard: 'Перейти в дашборд',
 
   // Error screens (top-level)
   app_error_title: 'Что-то пошло не так',

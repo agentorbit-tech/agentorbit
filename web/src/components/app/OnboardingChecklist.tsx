@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Check, Copy } from 'lucide-react'
 import { useI18n } from '@/i18n'
 import { useAPIKeys } from '@/hooks/use-keys'
+import { useProxyBaseUrl } from '@/hooks/use-meta'
 import { cn } from '@/lib/utils'
 
 interface OnboardingChecklistProps {
@@ -13,6 +14,7 @@ interface OnboardingChecklistProps {
 export function OnboardingChecklist({ hasSessions, orgID }: OnboardingChecklistProps) {
   const { t } = useI18n()
   const { data: keys } = useAPIKeys(orgID)
+  const baseUrl = useProxyBaseUrl()
   const hasKey = (keys?.length ?? 0) > 0
   const step1Done = hasKey
   const step2Done = hasKey
@@ -20,8 +22,6 @@ export function OnboardingChecklist({ hasSessions, orgID }: OnboardingChecklistP
   const step4Done = hasSessions
 
   if (step4Done) return null
-
-  const baseUrl = `${window.location.origin}/v1`
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">

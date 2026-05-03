@@ -53,6 +53,12 @@ type ProcessingConfig struct {
 	// Billing service URL exposed via /api/meta. Empty in self-host (no Pro UI rendered).
 	BillingURL string
 
+	// Public proxy base URL exposed via /api/meta so the dashboard can render
+	// the correct base_url for agents (e.g. "https://api.agentorbit.tech").
+	// Empty in self-host setups where the UI and proxy share an origin — the
+	// frontend then falls back to window.location.origin.
+	ProxyURL string
+
 	// Cookie Domain attribute for the agentorbit_token cookie.
 	// Empty in self-host (host-only cookie). Set to ".agentorbit.tech" in
 	// cloud so the cookie is shared with billing.agentorbit.tech.
@@ -134,6 +140,7 @@ func LoadProcessing() (*ProcessingConfig, error) {
 
 	cfg.AppVersion = getEnvOrDefault("APP_VERSION", "")
 	cfg.BillingURL = getEnvOrDefault("BILLING_URL", "")
+	cfg.ProxyURL = strings.TrimRight(getEnvOrDefault("PROXY_URL", ""), "/")
 	cfg.CookieDomain = getEnvOrDefault("COOKIE_DOMAIN", "")
 
 	cfg.SentryDSN = os.Getenv("SENTRY_DSN")

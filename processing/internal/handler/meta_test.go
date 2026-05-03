@@ -8,7 +8,7 @@ import (
 )
 
 func TestMetaHandler_ReturnsBillingURL_WhenSet(t *testing.T) {
-	h := NewMetaHandler("0.1.2", "https://billing.agentorbit.tech")
+	h := NewMetaHandler("0.1.2", "https://billing.agentorbit.tech", "")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/meta", nil))
 	if rr.Code != http.StatusOK {
@@ -27,7 +27,7 @@ func TestMetaHandler_ReturnsBillingURL_WhenSet(t *testing.T) {
 }
 
 func TestMetaHandler_OmitsBillingURL_WhenEmpty(t *testing.T) {
-	h := NewMetaHandler("0.1.2", "")
+	h := NewMetaHandler("0.1.2", "", "")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/meta", nil))
 	if rr.Code != http.StatusOK {
@@ -41,5 +41,34 @@ func TestMetaHandler_OmitsBillingURL_WhenEmpty(t *testing.T) {
 		// We require the field to be omitted (not null) so self-host clients
 		// can use a simple `if (meta.billing_url)` check.
 		t.Fatalf("billing_url should be omitted when empty")
+	}
+}
+
+func TestMetaHandler_ReturnsProxyURL_WhenSet(t *testing.T) {
+	h := NewMetaHandler("0.1.2", "", "https://api.agentorbit.tech")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/meta", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status %d", rr.Code)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got["proxy_url"] != "https://api.agentorbit.tech" {
+		t.Fatalf("proxy_url: %v", got["proxy_url"])
+	}
+}
+
+func TestMetaHandler_OmitsProxyURL_WhenEmpty(t *testing.T) {
+	h := NewMetaHandler("0.1.2", "", "")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/meta", nil))
+	var got map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if _, ok := got["proxy_url"]; ok {
+		t.Fatalf("proxy_url should be omitted when empty")
 	}
 }

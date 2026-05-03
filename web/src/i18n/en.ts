@@ -312,6 +312,9 @@ export const en = {
   keys_raw_title: 'Your new API key',
   keys_raw_body: 'Copy this key now — it will not be shown again. Auto-hides in {seconds}s.',
   keys_raw_done: 'Done',
+  keys_raw_base_url_label: 'Set this as your agent’s base URL:',
+  keys_raw_open_dashboard: 'Open dashboard',
+  keys_raw_copy_first: 'Copy the key first',
   keys_deactivate_title: 'Deactivate API key',
   keys_deactivate_body: 'This key will stop working immediately and cannot be reactivated.',
   keys_deactivating: 'Deactivating...',
@@ -499,6 +502,20 @@ export const en = {
   auth_resend_verification_btn: 'Resend verification email',
   auth_resend_verification_sending: 'Sending…',
   auth_resend_verification_sent: 'Verification email sent. Check your inbox.',
+
+  // Auth - Accept invite
+  auth_invite_title: 'Accept invite',
+  auth_invite_token_invalid: 'Invalid or missing invite token.',
+  auth_invite_signin_required: 'Sign in or create an account to accept the invite.',
+  auth_invite_signin_btn: 'Sign in',
+  auth_invite_register_btn: 'Create account',
+  auth_invite_accepting: 'Accepting invite…',
+  auth_invite_success: 'Invite accepted. Redirecting…',
+  auth_invite_email_mismatch: 'This invite was sent to a different email. Sign out and sign in with the invited email.',
+  auth_invite_already_member: 'You are already a member of this organization.',
+  auth_invite_expired: 'This invite is invalid or has expired.',
+  auth_invite_logout_btn: 'Sign out',
+  auth_invite_go_dashboard: 'Go to dashboard',
 
   // Error screens (top-level)
   app_error_title: 'Something went wrong',

@@ -6,6 +6,7 @@ import { api, ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
 import { useAuthStore } from '@/store'
 import { useI18n } from '@/i18n'
+import { takePendingInvite } from '@/pages/public/AcceptInvitePage'
 import type { LoginResponse, Organization, PaginatedResponse, SetupStatusResponse } from '@/types/api'
 
 const inputClass = "w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-colors"
@@ -34,6 +35,13 @@ export function LoginPage() {
     mutationFn: async () => api.post<LoginResponse>('/auth/login', { email, password }),
     onSuccess: async () => {
       setAuthenticated(true)
+      // If the user arrived via an invite link, accept it now instead of
+      // dropping them straight onto the dashboard.
+      const pendingInvite = takePendingInvite()
+      if (pendingInvite) {
+        navigate(`/auth/invite?token=${encodeURIComponent(pendingInvite)}`, { replace: true })
+        return
+      }
       try {
         const orgs = await api.get<Organization[] | PaginatedResponse<Organization>>('/api/orgs/')
         const orgList = Array.isArray(orgs) ? orgs : orgs.data

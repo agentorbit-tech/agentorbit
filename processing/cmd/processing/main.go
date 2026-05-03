@@ -198,7 +198,7 @@ func main() {
 	r.Get("/readyz", handler.NewReadinessHandler(pool))
 
 	// Deployment metadata — public, surfaces APP_VERSION in the UI footer
-	r.Get("/meta", handler.NewMetaHandler(cfg.AppVersion, cfg.BillingURL))
+	r.Get("/meta", handler.NewMetaHandler(cfg.AppVersion, cfg.BillingURL, cfg.ProxyURL))
 
 	// Public auth routes — no authentication required, rate-limited
 	// Tightened to 5 req/min/IP (SP-2 #4) to slow brute-force at the edge

@@ -10,6 +10,7 @@ import { RegisterPage } from '@/pages/public/RegisterPage'
 import { VerifyEmailPage } from '@/pages/public/VerifyEmailPage'
 import { RequestPasswordResetPage } from '@/pages/public/RequestPasswordResetPage'
 import { ResetPasswordPage } from '@/pages/public/ResetPasswordPage'
+import { AcceptInvitePage } from '@/pages/public/AcceptInvitePage'
 import { LandingPage } from '@/pages/public/LandingPage'
 import { PrivacyPolicyPage } from '@/pages/public/PrivacyPolicyPage'
 import { TermsPage } from '@/pages/public/TermsPage'
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
           { path: '/verify-email', element: <VerifyEmailPage /> },
           { path: '/request-password-reset', element: <RequestPasswordResetPage /> },
           { path: '/reset-password', element: <ResetPasswordPage /> },
+          { path: '/auth/invite', element: <AcceptInvitePage /> },
           { path: '/privacy-policy', element: <PrivacyPolicyPage /> },
           { path: '/terms', element: <TermsPage /> },
           { path: '/consent', element: <ConsentPage /> },

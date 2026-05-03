@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Copy, Check, Loader2, Play } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useAuthStore } from '@/store'
 import { useAPIKeys, useCreateAPIKey, useDeactivateAPIKey, useTestAPIKey } from '@/hooks/use-keys'
+import { useProxyBaseUrl } from '@/hooks/use-meta'
 import { useI18n } from '@/i18n'
 import type { APIKeyCreateResult, TestKeyResult } from '@/types/api'
 import { ApiError } from '@/lib/api'
@@ -15,11 +17,13 @@ import {
 } from '@/components/ui/select'
 
 export function APIKeysPage() {
+  const navigate = useNavigate()
   const activeOrgID = useAuthStore((s) => s.activeOrgID) ?? ''
   const { data: keys, isLoading, isError } = useAPIKeys(activeOrgID)
   const createKey = useCreateAPIKey(activeOrgID)
   const deactivateKey = useDeactivateAPIKey(activeOrgID)
   const testKey = useTestAPIKey(activeOrgID)
+  const proxyBaseUrl = useProxyBaseUrl()
   const { t, tt } = useI18n()
 
   const PROVIDER_OPTIONS = [
@@ -40,6 +44,8 @@ export function APIKeysPage() {
   const [createError, setCreateError] = useState('')
   const [rawKeyResult, setRawKeyResult] = useState<APIKeyCreateResult | null>(null)
   const [copied, setCopied] = useState(false)
+  const [everCopied, setEverCopied] = useState(false)
+  const [baseUrlCopied, setBaseUrlCopied] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState<{ id: string; name: string } | null>(null)
   const [keyCountdown, setKeyCountdown] = useState(30)
   const [testingKeyID, setTestingKeyID] = useState<string | null>(null)
@@ -67,7 +73,7 @@ export function APIKeysPage() {
     }
   }
 
-  const dismissRawKey = useCallback(() => { setRawKeyResult(null); setCopied(false); setKeyCountdown(30); setRawKeyTest({ loading: false }); setRawKeyTestModel('') }, [])
+  const dismissRawKey = useCallback(() => { setRawKeyResult(null); setCopied(false); setEverCopied(false); setBaseUrlCopied(false); setKeyCountdown(30); setRawKeyTest({ loading: false }); setRawKeyTestModel('') }, [])
 
   async function handleRawKeyTest() {
     if (!rawKeyResult) return
@@ -117,7 +123,17 @@ export function APIKeysPage() {
   function handleCopyRawKey() {
     if (!rawKeyResult) return
     navigator.clipboard.writeText(rawKeyResult.raw_key).catch(() => {})
-    setCopied(true); setTimeout(() => setCopied(false), 2000)
+    setCopied(true); setEverCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleCopyBaseUrl() {
+    navigator.clipboard.writeText(proxyBaseUrl).catch(() => {})
+    setBaseUrlCopied(true); setTimeout(() => setBaseUrlCopied(false), 2000)
+  }
+
+  function handleOpenDashboard() {
+    dismissRawKey()
+    navigate('/dash')
   }
 
   async function handleDeactivateConfirm() {
@@ -275,6 +291,15 @@ export function APIKeysPage() {
                 {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
               </button>
             </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{t.keys_raw_base_url_label}</p>
+              <div className="relative">
+                <div className="font-mono text-sm bg-zinc-950 border border-zinc-800 rounded-md p-3 select-all break-all text-zinc-300 pr-10">{`base_url="${proxyBaseUrl}"`}</div>
+                <button onClick={handleCopyBaseUrl} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors">
+                  {baseUrlCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
             {rawKeyResult && !KNOWN_PROVIDERS.includes(rawKeyResult.provider_type) && !rawKeyTest.result ? (
               <input
                 value={rawKeyTestModel}
@@ -301,7 +326,15 @@ export function APIKeysPage() {
             >
               {rawKeyTest.loading ? <><Loader2 size={14} className="animate-spin" />{t.keys_test_testing}</> : <><Play size={14} />{t.keys_test}</>}
             </button>
-            <button onClick={dismissRawKey} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors btn-press">{t.keys_raw_done}</button>
+            <button onClick={dismissRawKey} className="text-sm font-medium bg-zinc-800 text-zinc-200 px-4 py-2 rounded-md hover:bg-zinc-700 transition-colors btn-press">{t.keys_raw_done}</button>
+            <button
+              onClick={handleOpenDashboard}
+              disabled={!everCopied}
+              title={everCopied ? undefined : t.keys_raw_copy_first}
+              className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors btn-press disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t.keys_raw_open_dashboard}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -77,9 +77,14 @@ export function useSessionsSocket(orgID: string) {
         // Invalidate relevant queries based on event type
         if (msg.type === 'session.created' || msg.type === 'session.updated') {
           queryClient.invalidateQueries({ queryKey: ['sessions', orgID] })
-          // Refetch stats immediately so KPI cards and daily chart reflect new data.
+          // Refetch stats immediately so KPI cards, daily chart, agent table
+          // and finish-reason breakdown reflect the new data — otherwise the
+          // dashboard's "create your first key" empty state lingers after the
+          // first real session has already arrived.
           queryClient.invalidateQueries({ queryKey: ['stats', orgID] })
           queryClient.invalidateQueries({ queryKey: ['dailyStats', orgID] })
+          queryClient.invalidateQueries({ queryKey: ['agentStats', orgID] })
+          queryClient.invalidateQueries({ queryKey: ['finishReasons', orgID] })
         }
         if (msg.type === 'alert.triggered') {
           // Toast for alert events per UI-SPEC: "Alert triggered: [rule name]"

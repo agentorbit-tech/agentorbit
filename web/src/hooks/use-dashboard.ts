@@ -16,7 +16,7 @@ function rangeToDays(range: DateRange): number {
   }
 }
 
-export function useStats(orgID: string, from: Date, to: Date) {
+export function useStats(orgID: string, from: Date, to: Date, opts?: { pollWhileEmpty?: boolean }) {
   return useQuery({
     queryKey: ['stats', orgID, toDateKey(from), toDateKey(to)],
     queryFn: () =>
@@ -24,6 +24,16 @@ export function useStats(orgID: string, from: Date, to: Date) {
         `/api/orgs/${orgID}/stats?from=${from.toISOString()}&to=${to.toISOString()}`
       ),
     enabled: !!orgID,
+    // While the dashboard shows the empty state, the user may have just
+    // started sending traffic. WebSocket invalidation handles the happy path,
+    // but if the socket disconnects (closed laptop, flaky proxy, etc.) the
+    // empty state would stick. A slow poll fills that gap.
+    refetchInterval: (query) => {
+      if (!opts?.pollWhileEmpty) return false
+      const data = query.state.data as StatsResult | undefined
+      const hasActivity = !!data && (data.total_sessions > 0 || data.total_spans > 0)
+      return hasActivity ? false : 15000
+    },
   })
 }
 

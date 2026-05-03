@@ -8,6 +8,23 @@ import { queryClient } from '@/lib/queryClient'
 import { useI18n } from '@/i18n'
 import type { Organization, PaginatedResponse } from '@/types/api'
 
+// Probes the session cookie without going through the shared `api` client.
+// The shared client treats a 401 from /api/* as "session expired" and forces a
+// hard logout + redirect to /login — fine for an authenticated app, but on
+// /auth/invite a 401 simply means "anonymous visitor" and must NOT redirect.
+async function probeSession(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/orgs/', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 const PENDING_INVITE_KEY = 'agentorbit_pending_invite'
 
 export function savePendingInvite(token: string) {
@@ -46,16 +63,11 @@ export function AcceptInvitePage() {
       return
     }
     let cancelled = false
-    api.get<unknown>('/api/orgs/')
-      .then(() => {
-        if (cancelled) return
-        setAuthenticated(true)
-        setSessionChecked(true)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setSessionChecked(true)
-      })
+    probeSession().then((ok) => {
+      if (cancelled) return
+      if (ok) setAuthenticated(true)
+      setSessionChecked(true)
+    })
     return () => {
       cancelled = true
     }

@@ -1,5 +1,8 @@
-# Frontend build stage
-FROM node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 AS frontend
+# Frontend build stage — pinned to BUILDPLATFORM so npm ci and vite build run
+# natively on x86 instead of being emulated under QEMU for the linux/arm64
+# target. The output is platform-independent static files anyway, so building
+# once is enough.
+FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 AS frontend
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci

@@ -14,10 +14,25 @@ env:
   PROCESSING_IMAGE: ghcr.io/agentorbit-tech/agentorbit-processing
 
 jobs:
-  # Build and push multi-arch Docker images
+  # Build and push multi-arch Docker images.
+  # Proxy and processing are split into separate matrix jobs so they run on
+  # different runners in parallel — the slow processing build no longer
+  # serialises behind (or in front of) the fast proxy build.
   docker:
-    name: Docker Images
+    name: Docker Image (${{ matrix.image }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: proxy
+            dockerfile: proxy/Dockerfile
+            tag_image: ghcr.io/agentorbit-tech/agentorbit-proxy
+            cache_scope: proxy
+          - image: processing
+            dockerfile: processing/Dockerfile
+            tag_image: ghcr.io/agentorbit-tech/agentorbit-processing
+            cache_scope: processing
     steps:
       - uses: actions/checkout@v6
 
@@ -31,31 +46,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push proxy
+      - name: Build & push ${{ matrix.image }}
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: proxy/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.PROXY_IMAGE }}:${{ github.ref_name }}
-            ${{ env.PROXY_IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & push processing
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: processing/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.PROCESSING_IMAGE }}:${{ github.ref_name }}
-            ${{ env.PROCESSING_IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ matrix.tag_image }}:${{ github.ref_name }}
+            ${{ matrix.tag_image }}:latest
+          # Per-image cache scope — without it both jobs would clobber each
+          # other's cache on the same key and the savings would be lost.
+          cache-from: type=gha,scope=${{ matrix.cache_scope }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache_scope }}
 
   # Cross-compile Go binaries
   binaries:

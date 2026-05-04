@@ -125,7 +125,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 
 	alertSvc := service.NewAlertService(queries, pool, h, mailer, "http://localhost:3000")
 
-	authH := handler.NewAuthHandler(authSvc, mailer, "http://localhost:3000", "", 24*time.Hour, emailRL, queries)
+	authH := handler.NewAuthHandler(authSvc, inviteSvc, mailer, "http://localhost:3000", "", 24*time.Hour, emailRL, queries)
 	orgH := handler.NewOrgHandler(orgSvc)
 	apiKeyH := handler.NewAPIKeyHandler(apiKeySvc, middleware.RequireActiveOrg(), middleware.RequireRole)
 	dashH := handler.NewDashboardHandler(dashSvc)

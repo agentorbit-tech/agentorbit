@@ -10,6 +10,7 @@ import {
   useAlertRules, useCreateAlertRule, useUpdateAlertRule, useDeleteAlertRule,
   useInitiateDeletion, useCancelDeletion,
   usePrivacySettings, useUpdatePrivacySettings,
+  useCurrentRole, canMutate,
 } from '@/hooks/use-org'
 import type { AlertRule, OrgMember, Invite, MaskingMode, MaskingRule } from '@/types/api'
 import { Plus, Trash2, Sparkles } from 'lucide-react'
@@ -86,6 +87,9 @@ function MinimalTabs({ active, onChange }: { active: TabKey; onChange: (t: TabKe
 function GeneralTab({ orgID }: { orgID: string }) {
   const { t, tt } = useI18n()
   const { data: org } = useOrg(orgID)
+  const role = useCurrentRole(orgID)
+  const canMutateSettings = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
   const updateSettings = useUpdateOrgSettings(orgID)
   const initiateDeletion = useInitiateDeletion(orgID)
   const cancelDeletion = useCancelDeletion(orgID)
@@ -127,7 +131,7 @@ function GeneralTab({ orgID }: { orgID: string }) {
           <div className="flex items-center gap-2"><input type="number" value={sessionTimeout} onChange={(e) => { setSessionTimeout(Number(e.target.value)); markDirty() }} className={cn(inputClass, 'w-32')} /><span className="text-sm text-zinc-500">{t.settings_seconds}</span></div>
         </div>
         {saveError && <p className="text-sm text-red-400">{saveError}</p>}
-        <button onClick={handleSave} disabled={!isDirty || updateSettings.isPending} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 btn-press">{updateSettings.isPending ? t.settings_saving : t.settings_save}</button>
+        <button onClick={handleSave} disabled={!isDirty || updateSettings.isPending || !canMutateSettings} title={!canMutateSettings ? t.role_no_permission : undefined} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-press">{updateSettings.isPending ? t.settings_saving : t.settings_save}</button>
       </div>
 
       <div className="h-px bg-zinc-800 my-8" />
@@ -155,10 +159,10 @@ function GeneralTab({ orgID }: { orgID: string }) {
         {org?.deletion_scheduled_at?.Valid ? (
           <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4 space-y-3">
             <p className="text-sm text-red-400">{tt('settings_deletion_scheduled', { date: format(new Date(org.deletion_scheduled_at.Time), 'PPP') })}</p>
-            <button onClick={() => setShowCancelDeleteDialog(true)} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors">{t.settings_cancel_deletion}</button>
+            <button onClick={() => setShowCancelDeleteDialog(true)} disabled={!isOwner} title={!isOwner ? t.role_no_permission : undefined} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{t.settings_cancel_deletion}</button>
           </div>
         ) : (
-          <button onClick={() => setShowDeleteDialog(true)} className="text-sm font-medium bg-red-500/10 text-red-400 px-4 py-2 rounded-md hover:bg-red-500/20 transition-colors">{t.settings_delete_org}</button>
+          <button onClick={() => setShowDeleteDialog(true)} disabled={!isOwner} title={!isOwner ? t.role_no_permission : undefined} className="text-sm font-medium bg-red-500/10 text-red-400 px-4 py-2 rounded-md hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{t.settings_delete_org}</button>
         )}
       </div>
 
@@ -185,6 +189,8 @@ function GeneralTab({ orgID }: { orgID: string }) {
 function MembersTab({ orgID }: { orgID: string }) {
   const { t, tt } = useI18n()
   const { data: org } = useOrg(orgID); const { data: members, isLoading } = useOrgMembers(orgID); const removeMember = useRemoveMember(orgID)
+  const role = useCurrentRole(orgID)
+  const canMutateMembers = role === 'owner' || role === 'admin'
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
   if (org?.plan === 'free') return <ProCTACard title={t.pro_cta_members_title} description={t.pro_cta_members_desc} source="settings_members" />
   async function handleRemove(id: string) { await removeMember.mutateAsync(id); setConfirmRemove(null) }
@@ -209,7 +215,7 @@ function MembersTab({ orgID }: { orgID: string }) {
                 ) : (<>
                   <td className="px-5 py-3.5 text-zinc-200 font-medium">{m.user_name}</td><td className="px-5 py-3.5 text-zinc-500">{m.email}</td>
                   <td className="px-5 py-3.5 text-zinc-500 capitalize">{m.role}</td><td className="px-5 py-3.5 text-zinc-600 hidden sm:table-cell">{m.created_at ? format(new Date(m.created_at), 'PP') : '\u2014'}</td>
-                  <td className="px-5 py-3.5">{m.role !== 'owner' && <button onClick={() => setConfirmRemove(m.user_id)} className="text-sm text-red-400 hover:text-red-300">{t.settings_members_remove}</button>}</td>
+                  <td className="px-5 py-3.5">{m.role !== 'owner' && canMutateMembers && <button onClick={() => setConfirmRemove(m.user_id)} className="text-sm text-red-400 hover:text-red-300">{t.settings_members_remove}</button>}</td>
                 </>)}
               </tr>
             ))}
@@ -223,6 +229,8 @@ function MembersTab({ orgID }: { orgID: string }) {
 function InvitesTab({ orgID }: { orgID: string }) {
   const { t } = useI18n()
   const { data: invites, isLoading } = useInvites(orgID); const createInvite = useCreateInvite(orgID); const revokeInvite = useRevokeInvite(orgID)
+  const role = useCurrentRole(orgID)
+  const canMutateInvites = role === 'owner' || role === 'admin'
   const [showInviteDialog, setShowInviteDialog] = useState(false); const [inviteEmail, setInviteEmail] = useState(''); const [inviteRole, setInviteRole] = useState('member')
   const [inviteError, setInviteError] = useState(''); const [copiedInviteID, setCopiedInviteID] = useState<string | null>(null); const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null)
   function resetInviteForm() { setInviteEmail(''); setInviteRole('member'); setInviteError('') }
@@ -233,7 +241,7 @@ function InvitesTab({ orgID }: { orgID: string }) {
   return (
     <div>
       <div className="flex justify-end mb-6">
-        <button onClick={() => { resetInviteForm(); setShowInviteDialog(true) }} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-3.5 py-1.5 rounded-md hover:bg-zinc-200 transition-colors">{t.settings_invite_btn}</button>
+        <button onClick={() => { resetInviteForm(); setShowInviteDialog(true) }} disabled={!canMutateInvites} title={!canMutateInvites ? t.role_no_permission : undefined} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-3.5 py-1.5 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{t.settings_invite_btn}</button>
       </div>
       {isLoading ? <p className="text-sm text-zinc-500">{t.settings_invites_loading}</p> : !invites || invites.length === 0 ? (
         <div className="text-center py-16"><p className="text-base font-medium text-zinc-200 mb-2">{t.settings_invites_empty_title}</p><p className="text-sm text-zinc-500">{t.settings_invites_empty_body}</p></div>
@@ -252,7 +260,7 @@ function InvitesTab({ orgID }: { orgID: string }) {
                   <div className="flex items-center gap-2">
                     {inv.invite_url && <button onClick={() => handleCopyLink(inv)} className="text-zinc-500 hover:text-zinc-200 transition-colors">{copiedInviteID === inv.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}</button>}
                     {confirmRevoke === inv.id ? (<><button onClick={() => handleRevoke(inv.id)} className="text-sm text-red-400">{t.settings_invites_revoke_confirm}</button><button onClick={() => setConfirmRevoke(null)} className="text-sm text-zinc-500 ml-2">{t.settings_invites_revoke_cancel}</button></>) :
-                      <button onClick={() => setConfirmRevoke(inv.id)} className="text-sm text-red-400 hover:text-red-300">{t.settings_invites_revoke}</button>}
+                      canMutateInvites && <button onClick={() => setConfirmRevoke(inv.id)} className="text-sm text-red-400 hover:text-red-300">{t.settings_invites_revoke}</button>}
                   </div>
                 </td>
               </tr>
@@ -300,6 +308,8 @@ function AlertsTab({ orgID }: { orgID: string }) {
   ]
 
   const { data: alerts, isLoading, error } = useAlertRules(orgID); const createAlert = useCreateAlertRule(orgID); const updateAlert = useUpdateAlertRule(orgID); const deleteAlert = useDeleteAlertRule(orgID)
+  const role = useCurrentRole(orgID)
+  const canMutateAlerts = role === 'owner' || role === 'admin'
   const [showAlertDialog, setShowAlertDialog] = useState(false); const [editingAlert, setEditingAlert] = useState<AlertRule | null>(null); const [formData, setFormData] = useState<AlertFormData>(defaultAlertForm()); const [alertFormError, setAlertFormError] = useState(''); const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const isFreeGated = error instanceof ApiError && error.status === 403
   function openCreate() { setEditingAlert(null); setFormData(defaultAlertForm()); setAlertFormError(''); setShowAlertDialog(true) }
@@ -312,7 +322,7 @@ function AlertsTab({ orgID }: { orgID: string }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-6"><button onClick={openCreate} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-3.5 py-1.5 rounded-md hover:bg-zinc-200 transition-colors">{t.settings_alerts_add}</button></div>
+      <div className="flex justify-end mb-6"><button onClick={openCreate} disabled={!canMutateAlerts} title={!canMutateAlerts ? t.role_no_permission : undefined} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-3.5 py-1.5 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{t.settings_alerts_add}</button></div>
       {isLoading ? <p className="text-sm text-zinc-500">{t.settings_alerts_loading}</p> : !alerts || alerts.length === 0 ? (
         <div className="text-center py-16"><p className="text-base font-medium text-zinc-200 mb-2">{t.settings_alerts_empty_title}</p><p className="text-sm text-zinc-500">{t.settings_alerts_empty_body}</p></div>
       ) : (
@@ -330,7 +340,7 @@ function AlertsTab({ orgID }: { orgID: string }) {
                   <td className="px-5 py-3.5 text-zinc-500">{ALERT_TYPE_OPTIONS.find(o => o.value === a.alert_type)?.label ?? a.alert_type}</td>
                   <td className="px-5 py-3.5 text-zinc-500 hidden sm:table-cell">{a.threshold}</td><td className="px-5 py-3.5 text-zinc-500 hidden sm:table-cell">{a.window_minutes}{t.settings_alerts_window_suffix}</td>
                   <td className="px-5 py-3.5"><span className={a.enabled ? 'text-emerald-400' : 'text-zinc-600'}>{a.enabled ? t.settings_alerts_on : t.settings_alerts_off}</span></td>
-                  <td className="px-5 py-3.5"><div className="flex gap-2"><button onClick={() => openEdit(a)} className="text-sm text-zinc-500 hover:text-zinc-200">{t.settings_alerts_edit}</button><button onClick={() => setConfirmDelete(a.id)} className="text-sm text-red-400 hover:text-red-300">{t.settings_alerts_delete}</button></div></td>
+                  <td className="px-5 py-3.5">{canMutateAlerts && <div className="flex gap-2"><button onClick={() => openEdit(a)} className="text-sm text-zinc-500 hover:text-zinc-200">{t.settings_alerts_edit}</button><button onClick={() => setConfirmDelete(a.id)} className="text-sm text-red-400 hover:text-red-300">{t.settings_alerts_delete}</button></div>}</td>
                 </>)}
               </tr>
             ))}
@@ -365,7 +375,11 @@ function AlertsTab({ orgID }: { orgID: string }) {
   )
 }
 
+// Preset masking rules — seeded for first-time setup. Users may delete or
+// edit them; the backend never re-injects them.
 const PRESET_PHONE_RULE: MaskingRule = { name: 'phone', pattern: '\\+7\\d{10}', builtin: true }
+const PRESET_EMAIL_RULE: MaskingRule = { name: 'email', pattern: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}', builtin: true }
+const DEFAULT_PRESETS: MaskingRule[] = [PRESET_PHONE_RULE, PRESET_EMAIL_RULE]
 
 type RuleWithId = MaskingRule & { _id: string }
 let ruleIdCounter = 0
@@ -377,9 +391,11 @@ function PrivacyTab({ orgID }: { orgID: string }) {
   const { t } = useI18n()
   const { data: privacy, isLoading } = usePrivacySettings(orgID)
   const updatePrivacy = useUpdatePrivacySettings(orgID)
+  const role = useCurrentRole(orgID)
+  const canMutatePrivacy = role === 'owner' || role === 'admin'
   const [storeContent, setStoreContent] = useState(true)
   const [mode, setMode] = useState<MaskingMode>('off')
-  const [rules, setRules] = useState<RuleWithId[]>(() => [withId(PRESET_PHONE_RULE)])
+  const [rules, setRules] = useState<RuleWithId[]>(() => DEFAULT_PRESETS.map(withId))
   const [isDirty, setIsDirty] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -388,11 +404,15 @@ function PrivacyTab({ orgID }: { orgID: string }) {
       setStoreContent(privacy.store_span_content)
       const cfg = privacy.masking_config
       if (cfg) {
+        // Org has saved settings before — trust them exactly, including an
+        // empty rule list (the user may have intentionally removed presets).
         setMode(cfg.mode ?? 'off')
-        setRules(cfg.rules?.length ? cfg.rules.map(withId) : [withId(PRESET_PHONE_RULE)])
+        setRules((cfg.rules ?? []).map(withId))
       } else {
+        // First-time setup: seed with the default presets so users see
+        // examples they can edit or remove.
         setMode('off')
-        setRules([withId(PRESET_PHONE_RULE)])
+        setRules(DEFAULT_PRESETS.map(withId))
       }
       setIsDirty(false)
     }
@@ -423,10 +443,7 @@ function PrivacyTab({ orgID }: { orgID: string }) {
     setIsDirty(true)
   }
   function removeRule(index: number) {
-    setRules(prev => {
-      if (prev[index]?.builtin) return prev
-      return prev.filter((_, i) => i !== index)
-    })
+    setRules(prev => prev.filter((_, i) => i !== index))
     setIsDirty(true)
   }
   function addRule() {
@@ -519,32 +536,28 @@ function PrivacyTab({ orgID }: { orgID: string }) {
                         value={rule.name}
                         onChange={(e) => updateRule(i, 'name', e.target.value)}
                         placeholder={t.settings_privacy_rule_name}
-                        disabled={rule.builtin}
-                        className={cn(inputClass, 'text-xs', rule.builtin && 'opacity-70')}
+                        className={cn(inputClass, 'text-xs')}
                       />
                       <input
                         value={rule.pattern}
                         onChange={(e) => updateRule(i, 'pattern', e.target.value)}
                         placeholder={t.settings_privacy_rule_pattern}
-                        disabled={rule.builtin}
                         maxLength={512}
-                        className={cn(inputClass, 'text-xs font-mono', rule.builtin && 'opacity-70')}
+                        className={cn(inputClass, 'text-xs font-mono')}
                       />
                     </div>
                     <div className="flex flex-col items-center gap-1 pt-1">
                       {rule.builtin && (
                         <span className="text-[10px] text-zinc-600 px-1.5 py-0.5 rounded bg-zinc-800">{t.settings_privacy_rule_builtin}</span>
                       )}
-                      {!rule.builtin && (
-                        <button
-                          type="button"
-                          onClick={() => removeRule(i)}
-                          className="text-zinc-600 hover:text-red-400 transition-colors p-1"
-                          title={t.settings_privacy_rule_remove}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeRule(i)}
+                        className="text-zinc-600 hover:text-red-400 transition-colors p-1"
+                        title={t.settings_privacy_rule_remove}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -566,8 +579,9 @@ function PrivacyTab({ orgID }: { orgID: string }) {
       {saveError && <p className="text-sm text-red-400">{saveError}</p>}
       <button
         onClick={handleSave}
-        disabled={!isDirty || updatePrivacy.isPending}
-        className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 btn-press"
+        disabled={!isDirty || updatePrivacy.isPending || !canMutatePrivacy}
+        title={!canMutatePrivacy ? t.role_no_permission : undefined}
+        className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-press"
       >
         {updatePrivacy.isPending ? t.settings_privacy_saving : t.settings_privacy_save}
       </button>

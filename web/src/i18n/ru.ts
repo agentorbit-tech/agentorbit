@@ -568,6 +568,12 @@ export const ru: Record<TranslationKey, string> = {
   common_copied: 'Скопировано',
   common_retry: 'Повторить',
 
+  // Role gating
+  role_no_permission: 'У вас нет прав для этого действия',
+
+  // API key creation notice
+  keys_create_encryption_notice: 'Ключи провайдеров хранятся в зашифрованном виде (AES-256-GCM) и не возвращаются обратно в интерфейс.',
+
   // Pluralization
   span_one: 'спан',
   span_few: 'спана',

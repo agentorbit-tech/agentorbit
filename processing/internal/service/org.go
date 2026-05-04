@@ -379,9 +379,14 @@ func (s *OrgService) ListMembers(ctx context.Context, orgID uuid.UUID) ([]db.Lis
 	return members, nil
 }
 
-// GetSpanMaskingMaps returns the masking map entries for a given span (D-22).
-func (s *OrgService) GetSpanMaskingMaps(ctx context.Context, spanID uuid.UUID) ([]db.SpanMaskingMap, error) {
-	maps, err := s.queries.GetSpanMaskingMaps(ctx, spanID)
+// GetSpanMaskingMaps returns the masking map entries for a span scoped to the
+// given organization (D-22). Scoping by orgID prevents members of one org from
+// reading masking maps for spans owned by another org.
+func (s *OrgService) GetSpanMaskingMaps(ctx context.Context, orgID, spanID uuid.UUID) ([]db.SpanMaskingMap, error) {
+	maps, err := s.queries.GetSpanMaskingMaps(ctx, db.GetSpanMaskingMapsParams{
+		SpanID:         spanID,
+		OrganizationID: orgID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get span masking maps: %w", err)
 	}
@@ -404,6 +409,28 @@ func (s *OrgService) GetPrivacySettings(ctx context.Context, orgID uuid.UUID) (*
 		StoreSpanContent: row.StoreSpanContent,
 		MaskingConfig:    json.RawMessage(row.MaskingConfig),
 	}, nil
+}
+
+// compileMaskingPatternBounded compiles a user-supplied masking pattern with
+// a wall-clock deadline. RE2 compile is normally fast and bounded, but we
+// guard against pathological inputs (or future regex engine changes) so a
+// single privacy-settings save can never pin a request goroutine.
+func compileMaskingPatternBounded(pattern string, deadline time.Duration) error {
+	type result struct{ err error }
+	done := make(chan result, 1)
+	go func() {
+		_, err := regexp.Compile(pattern)
+		done <- result{err: err}
+	}()
+	select {
+	case r := <-done:
+		if r.err != nil {
+			return fmt.Errorf("invalid regex: %s", r.err.Error())
+		}
+		return nil
+	case <-time.After(deadline):
+		return fmt.Errorf("regex too complex to compile within %s", deadline)
+	}
 }
 
 // maskingConfigPayload is the expected shape of masking_config JSON.
@@ -441,8 +468,8 @@ func (s *OrgService) UpdatePrivacySettings(ctx context.Context, orgID uuid.UUID,
 			if len(rule.Pattern) > 512 {
 				return &ServiceError{Code: "invalid_rule_pattern", Status: 400, Message: fmt.Sprintf("rule %q: pattern too long (max 512 chars)", rule.Name)}
 			}
-			if _, err := regexp.Compile(rule.Pattern); err != nil {
-				return &ServiceError{Code: "invalid_rule_pattern", Status: 400, Message: fmt.Sprintf("rule %q: invalid regex: %s", rule.Name, err.Error())}
+			if err := compileMaskingPatternBounded(rule.Pattern, 250*time.Millisecond); err != nil {
+				return &ServiceError{Code: "invalid_rule_pattern", Status: 400, Message: fmt.Sprintf("rule %q: %s", rule.Name, err.Error())}
 			}
 		}
 	}

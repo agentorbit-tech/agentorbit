@@ -2,6 +2,30 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '@/lib/api'
 import type { Organization, OrgMember, Invite, AlertRule, PrivacySettings, MaskingConfig } from '@/types/api'
 
+interface CurrentUser {
+  id: string
+  email: string
+  name: string
+}
+
+// Returns the authenticated user's role within the active organization, or
+// null while loading or if membership cannot be determined.
+export function useCurrentRole(orgID: string): OrgMember['role'] | null {
+  const me = useQuery<CurrentUser>({
+    queryKey: ['user', 'me'],
+    queryFn: () => api.get<CurrentUser>('/api/user/me'),
+    staleTime: 5 * 60 * 1000,
+  })
+  const members = useOrgMembers(orgID)
+  if (!me.data || !members.data) return null
+  return members.data.find((m) => m.user_id === me.data!.id)?.role ?? null
+}
+
+// Roles allowed to create/modify/delete resources (org keys, alerts, members).
+export function canMutate(role: OrgMember['role'] | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'member'
+}
+
 // Org detail
 export function useOrg(orgID: string) {
   return useQuery({

@@ -344,6 +344,11 @@ func (h *OrgHandler) UpdatePrivacySettings(w http.ResponseWriter, r *http.Reques
 
 // GET /api/orgs/{orgID}/spans/{spanID}/masking-maps
 func (h *OrgHandler) GetSpanMaskingMaps(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := middleware.GetOrgID(r.Context())
+	if !ok {
+		WriteError(w, http.StatusBadRequest, "invalid_org_id", "Organization ID not in context")
+		return
+	}
 	spanIDStr := chi.URLParam(r, "spanID")
 	spanID, err := uuid.Parse(spanIDStr)
 	if err != nil {
@@ -351,7 +356,7 @@ func (h *OrgHandler) GetSpanMaskingMaps(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	maps, err := h.orgService.GetSpanMaskingMaps(r.Context(), spanID)
+	maps, err := h.orgService.GetSpanMaskingMaps(r.Context(), orgID, spanID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "internal_error", "Failed to fetch masking maps")
 		return

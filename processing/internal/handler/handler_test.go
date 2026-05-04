@@ -131,7 +131,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	dashH := handler.NewDashboardHandler(dashSvc)
 	userH := handler.NewUserHandler(authSvc)
 	inviteH := handler.NewInviteHandler(inviteSvc, queries, mailer)
-	alertH := handler.NewAlertHandler(alertSvc)
+	alertH := handler.NewAlertHandler(alertSvc, middleware.RequireRole)
 	internalH := handler.NewInternalHandler(internalSvc)
 	wsH := handler.NewWSHandler(h, testJWTSecret, queries, "*")
 

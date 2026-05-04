@@ -16,23 +16,31 @@ import (
 // All endpoints are org-scoped via RequireOrg middleware applied upstream.
 type AlertHandler struct {
 	alertService *service.AlertService
+	requireRole  func(roles ...string) func(http.Handler) http.Handler
 }
 
 // NewAlertHandler creates a new AlertHandler.
-func NewAlertHandler(alertService *service.AlertService) *AlertHandler {
-	return &AlertHandler{alertService: alertService}
+// requireRole is injected to gate mutating endpoints; reads are open to all
+// org members (including viewer).
+func NewAlertHandler(
+	alertService *service.AlertService,
+	requireRole func(roles ...string) func(http.Handler) http.Handler,
+) *AlertHandler {
+	return &AlertHandler{alertService: alertService, requireRole: requireRole}
 }
 
 // Routes returns a chi.Router with all alert endpoints.
 // Mounted at /api/orgs/{orgID}/alerts with RequireOrg applied upstream.
+// Read endpoints (List, Get, ListEvents) are accessible to any org member.
+// Mutating endpoints (Create, Update, Delete) require owner/admin.
 func (h *AlertHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.List)
-	r.Post("/", h.Create)
 	r.Get("/events", h.ListEvents)
 	r.Get("/{alertID}", h.Get)
-	r.Put("/{alertID}", h.Update)
-	r.Delete("/{alertID}", h.Delete)
+	r.With(h.requireRole("owner", "admin")).Post("/", h.Create)
+	r.With(h.requireRole("owner", "admin")).Put("/{alertID}", h.Update)
+	r.With(h.requireRole("owner", "admin")).Delete("/{alertID}", h.Delete)
 	return r
 }
 

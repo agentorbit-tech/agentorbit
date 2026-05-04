@@ -307,9 +307,6 @@ func (q *Queries) FindOrCreateExplicitSession(ctx context.Context, arg FindOrCre
 }
 
 const getIdleSessionsForClosure = `-- name: GetIdleSessionsForClosure :many
--- LIMIT 2000 (raised from 200) — allows the closer to keep up with bursts; with
--- per-cron singleflight + advisory locks (cron.WithAdvisoryLock) this stays
--- safe under multi-replica deployments.
 SELECT s.id, s.organization_id, s.span_count
 FROM sessions s
 JOIN organizations o ON o.id = s.organization_id
@@ -324,6 +321,9 @@ type GetIdleSessionsForClosureRow struct {
 	SpanCount      int32     `json:"span_count"`
 }
 
+// LIMIT 2000 (raised from 200) — allows the closer to keep up with bursts; with
+// per-cron singleflight + advisory locks (cron.WithAdvisoryLock) this stays
+// safe under multi-replica deployments.
 func (q *Queries) GetIdleSessionsForClosure(ctx context.Context) ([]GetIdleSessionsForClosureRow, error) {
 	rows, err := q.db.Query(ctx, getIdleSessionsForClosure)
 	if err != nil {

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Copy, Check, Loader2, Play } from 'lucide-react'
+import { Copy, Check, Loader2, Play, ShieldCheck } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useAuthStore } from '@/store'
 import { useAPIKeys, useCreateAPIKey, useDeactivateAPIKey, useTestAPIKey } from '@/hooks/use-keys'
+import { useCurrentRole, canMutate } from '@/hooks/use-org'
 import { useProxyBaseUrl } from '@/hooks/use-meta'
 import { useI18n } from '@/i18n'
 import type { APIKeyCreateResult, TestKeyResult } from '@/types/api'
@@ -24,6 +25,8 @@ export function APIKeysPage() {
   const deactivateKey = useDeactivateAPIKey(activeOrgID)
   const testKey = useTestAPIKey(activeOrgID)
   const proxyBaseUrl = useProxyBaseUrl()
+  const role = useCurrentRole(activeOrgID)
+  const canMutateKeys = canMutate(role)
   const { t, tt } = useI18n()
 
   const PROVIDER_OPTIONS = [
@@ -153,7 +156,9 @@ export function APIKeysPage() {
         </div>
         <button
           onClick={() => { resetCreateForm(); setShowCreate(true) }}
-          className="text-sm font-medium bg-zinc-50 text-zinc-950 px-3.5 py-1.5 rounded-md hover:bg-zinc-200 transition-colors duration-150 btn-press"
+          disabled={!canMutateKeys}
+          title={!canMutateKeys ? t.role_no_permission : undefined}
+          className="text-sm font-medium bg-zinc-50 text-zinc-950 px-3.5 py-1.5 rounded-md hover:bg-zinc-200 transition-colors duration-150 btn-press disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-50"
         >{t.keys_create}</button>
       </div>
 
@@ -168,7 +173,7 @@ export function APIKeysPage() {
           </div>
           <p className="text-base font-medium text-zinc-200 mb-2">{t.keys_empty_title}</p>
           <p className="text-sm text-zinc-500 mb-6">{t.keys_empty_body}</p>
-          <button onClick={() => { resetCreateForm(); setShowCreate(true) }} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors duration-150 btn-press">{t.keys_create}</button>
+          <button onClick={() => { resetCreateForm(); setShowCreate(true) }} disabled={!canMutateKeys} title={!canMutateKeys ? t.role_no_permission : undefined} className="text-sm font-medium bg-zinc-50 text-zinc-950 px-4 py-2 rounded-md hover:bg-zinc-200 transition-colors duration-150 btn-press disabled:opacity-50 disabled:cursor-not-allowed">{t.keys_create}</button>
         </div>
       ) : (
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden animate-fade-in">
@@ -199,7 +204,7 @@ export function APIKeysPage() {
                     <td className="px-5 py-3.5 text-zinc-600 hidden sm:table-cell">{key.last_used_at ? formatDistanceToNow(new Date(key.last_used_at), { addSuffix: true }) : t.keys_last_used_never}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        {key.active && (
+                        {key.active && canMutateKeys && (
                           <>
                             {testingKeyID === key.id && !KNOWN_PROVIDERS.includes(key.provider_type) && !testResult ? (
                               <div className="flex items-center gap-1.5">
@@ -261,6 +266,10 @@ export function APIKeysPage() {
         <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-50">
           <DialogHeader><DialogTitle className="text-lg font-semibold">{t.keys_create_title}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="flex items-start gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
+              <ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-300/90 leading-relaxed">{t.keys_create_encryption_notice}</p>
+            </div>
             <div><label className="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">{t.keys_create_name}</label><input placeholder={t.keys_create_name_placeholder} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} /></div>
             <div><label className="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">{t.keys_create_provider}</label>
               <Select value={providerType} onValueChange={setProviderType}>

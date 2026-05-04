@@ -47,9 +47,15 @@ export function LoginPage() {
         const orgList = Array.isArray(orgs) ? orgs : orgs.data
         if (orgList.length === 0) navigate('/create-org')
         else {
-          setActiveOrgID(orgList[0].id)
+          // Prefer the user's last-used org if it's still in their list;
+          // otherwise fall back to the first org returned by the API.
+          const persistedOrgID = useAuthStore.getState().activeOrgID
+          const chosen =
+            (persistedOrgID && orgList.find((o) => o.id === persistedOrgID)) ||
+            orgList[0]
+          setActiveOrgID(chosen.id)
           // Sync org locale to i18n store (D-06)
-          const orgLocale = (orgList[0] as Organization & { locale?: string }).locale
+          const orgLocale = (chosen as Organization & { locale?: string }).locale
           if (orgLocale === 'ru' || orgLocale === 'en') {
             useI18n.getState().setLang(orgLocale)
           }

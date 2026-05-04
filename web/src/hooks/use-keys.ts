@@ -23,7 +23,7 @@ export function useDeactivateAPIKey(orgID: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (keyID: string) =>
-      api.post<void>(`/api/orgs/${orgID}/keys/${keyID}/deactivate`),
+      api.delete<void>(`/api/orgs/${orgID}/keys/${keyID}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['keys', orgID] }),
   })
 }

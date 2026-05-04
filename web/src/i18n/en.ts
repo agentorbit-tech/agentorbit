@@ -566,6 +566,12 @@ export const en = {
   common_copied: 'Copied',
   common_retry: 'Retry',
 
+  // Role gating
+  role_no_permission: 'You do not have permission to do this',
+
+  // API key creation notice
+  keys_create_encryption_notice: 'Provider keys are stored encrypted (AES-256-GCM) and never exposed back through the dashboard.',
+
   // Pluralization
   span_one: 'span',
   span_few: 'spans',

@@ -249,8 +249,8 @@ func TestOrgService_GetSpanMaskingMaps_Empty(t *testing.T) {
 	mailer := &testutil.MockMailer{}
 	svc := service.NewOrgService(sharedQueries, sharedPool, mailer, "cloud")
 
-	// No masking maps exist for random UUID
-	maps, err := svc.GetSpanMaskingMaps(ctx, uuid.New())
+	// No masking maps exist for random org+span UUID pair.
+	maps, err := svc.GetSpanMaskingMaps(ctx, uuid.New(), uuid.New())
 	if err != nil {
 		t.Fatalf("GetSpanMaskingMaps: %v", err)
 	}

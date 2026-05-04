@@ -174,7 +174,7 @@ func main() {
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	wsHandler := handler.NewWSHandler(eventHub, cfg.JWTSecret, queries, cfg.AllowedOrigins)
 	userHandler := handler.NewUserHandler(authService)
-	alertHandler := handler.NewAlertHandler(alertService)
+	alertHandler := handler.NewAlertHandler(alertService, middleware.RequireRole)
 
 	// Router
 	r := chi.NewRouter()
@@ -254,7 +254,7 @@ func main() {
 					Delete("/members/{memberID}", orgHandler.RemoveMember)
 				r.Mount("/invites", inviteHandler.Routes())
 				r.Mount("/keys", apiKeyHandler.Routes())
-				r.With(middleware.RequireActiveOrg(), middleware.RequireRole("owner", "admin")).
+				r.With(middleware.RequireActiveOrg()).
 					Mount("/alerts", alertHandler.Routes())
 				r.Mount("/", dashboardHandler.Routes())
 			})

@@ -10,7 +10,7 @@ import {
   useAlertRules, useCreateAlertRule, useUpdateAlertRule, useDeleteAlertRule,
   useInitiateDeletion, useCancelDeletion,
   usePrivacySettings, useUpdatePrivacySettings,
-  useCurrentRole, canMutate,
+  useCurrentRole,
 } from '@/hooks/use-org'
 import type { AlertRule, OrgMember, Invite, MaskingMode, MaskingRule } from '@/types/api'
 import { Plus, Trash2, Sparkles } from 'lucide-react'

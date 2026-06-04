@@ -13,6 +13,7 @@ import {
   X,
   LogOut,
   Mail,
+  LifeBuoy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n'
@@ -20,6 +21,7 @@ import { OrgSwitcher } from './OrgSwitcher'
 import { UsageBar } from './UsageBar'
 import { useWSStore } from '@/hooks/use-websocket'
 import { useAuthStore } from '@/store'
+import { useBillingEnabled } from '@/hooks/use-meta'
 
 interface NavItem {
   path: string
@@ -39,6 +41,7 @@ function SidebarContent({ collapsed, onToggle, onNavClick }: { collapsed: boolea
   const location = useLocation()
   const wsStatus = useWSStore((s) => s.status)
   const logout = useAuthStore((s) => s.logout)
+  const billingEnabled = useBillingEnabled()
 
   const navItems: NavItem[] = [
     { path: '/dash', label: t.sidebar_dashboard, icon: LayoutDashboard },
@@ -47,6 +50,7 @@ function SidebarContent({ collapsed, onToggle, onNavClick }: { collapsed: boolea
     { path: '/system-prompts', label: t.sidebar_system_prompts, icon: FileText },
     { path: '/failure-clusters', label: t.sidebar_failure_clusters, icon: AlertTriangle },
     { path: '/settings', label: t.sidebar_settings, icon: Settings },
+    ...(billingEnabled ? [{ path: '/support', label: t.sidebar_support, icon: LifeBuoy }] : []),
   ]
 
   return (

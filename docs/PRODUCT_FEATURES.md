@@ -132,6 +132,14 @@ This document lists all implemented product features, grouped by category. When 
 
 ---
 
+## Support *(cloud only)*
+
+- **Support tickets** — users open tickets from the dedicated "Support" sidebar section
+- **Per-ticket chat** — back-and-forth messaging with the support team; staff replies are visually distinguished from user messages
+- **Billing-gated** — available on cloud plans only, surfaced based on the org's billing entitlement
+
+---
+
 ## Infrastructure & Ops
 
 - **Health endpoints** — `/health` (liveness), `/readyz` (DB check)
@@ -157,4 +165,5 @@ This document lists all implemented product features, grouped by category. When 
 | Failure Clustering | Deterministic | LLM | LLM |
 | Alerts | ✗ | ✓ | ✓ |
 | Privacy / Masking | ✗ | ✓ | ✓ |
+| Support chat | ✓ | ✓ | ✗ |
 | Span quota | 3 000/month | Unlimited | Unlimited |

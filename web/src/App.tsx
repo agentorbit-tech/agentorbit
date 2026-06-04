@@ -24,6 +24,8 @@ import { SettingsPage } from '@/pages/app/SettingsPage'
 import { SystemPromptsPage } from '@/pages/app/SystemPromptsPage'
 import { SystemPromptDetailPage } from '@/pages/app/SystemPromptDetailPage'
 import { FailureClustersPage } from '@/pages/app/FailureClustersPage'
+import { SupportPage } from '@/pages/app/SupportPage'
+import { SupportTicketPage } from '@/pages/app/SupportTicketPage'
 import { RouteErrorBoundary, NotFoundPage } from '@/components/app/ErrorBoundary'
 
 // Landing page is cloud-only. In self-host (no BILLING_URL), redirect / to /login.
@@ -76,6 +78,8 @@ const router = createBrowserRouter([
               { path: '/system-prompts/:id', element: <SystemPromptDetailPage /> },
               { path: '/failure-clusters', element: <FailureClustersPage /> },
               { path: '/settings', element: <SettingsPage /> },
+              { path: '/support', element: <SupportPage /> },
+              { path: '/support/:id', element: <SupportTicketPage /> },
             ],
           },
         ],

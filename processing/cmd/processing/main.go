@@ -200,10 +200,12 @@ func main() {
 	// Deployment metadata — public, surfaces APP_VERSION in the UI footer
 	r.Get("/meta", handler.NewMetaHandler(cfg.AppVersion, cfg.BillingURL, cfg.ProxyURL))
 
-	// Public auth routes — no authentication required, rate-limited
-	// Tightened to 5 req/min/IP (SP-2 #4) to slow brute-force at the edge
-	// while the per-process bcrypt semaphore handles capacity at the service.
-	authRateLimiter := middleware.NewRateLimiter(ctx, 5, 1*time.Minute, cfg.TrustedProxies)
+	// Public auth routes — no authentication required, rate-limited.
+	// 30 req/min/IP: the prior 5/min was tripping legitimate flows (accept-invite
+	// after logout+login burns 4–6 calls in seconds and showed users a misleading
+	// "invite expired" error). Brute-force protection is also handled by the
+	// per-process bcrypt semaphore.
+	authRateLimiter := middleware.NewRateLimiter(ctx, 30, 1*time.Minute, cfg.TrustedProxies)
 	r.With(authRateLimiter.Middleware, middleware.RequireXHR).Mount("/auth", authHandler.Routes())
 
 	// Invite acceptance — authenticated user, not org-scoped, rate-limited
